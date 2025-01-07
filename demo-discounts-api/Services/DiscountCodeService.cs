@@ -36,6 +36,13 @@ namespace demo_discounts_api.Services
 
         public async Task<Response<bool>> UseCode(string code)
         {
+            int length = code.Length;
+            if (length < ApplicationLimits.MinLength || length > ApplicationLimits.MaxLength)
+            {
+                return new Response<bool>(success: false, reason:
+                    ErrorMessageHelper.GenerateLengthInputError(length), false);
+            }
+
             bool success = await _codeRepository.UseCode(code);
 
             return new Response<bool>(success, string.Empty, success);
