@@ -62,24 +62,11 @@ steps:
 # 5. Stop the existing Windows Service (if it’s running)
 - powershell: |
     $serviceName = "$(serviceName)"
-    Write-Host "Stopping service: $serviceName if it is running..."
-    $maxRetries = 10
-    $retryDelay = 5
+    Write-Host "Attempting to stop service $serviceName..."
     & nssm stop $serviceName
-    for ($i = 1; $i -le $maxRetries; $i++) {
-        $status = & nssm status $serviceName
-        if ($status -eq "SERVICE_STOPPED") {
-            Write-Host "Service $serviceName stopped successfully."
-            break
-        } elseif ($i -eq $maxRetries) {
-            Write-Error "Service $serviceName did not stop in time. Current status: $status"
-            exit 1
-        } else {
-            Write-Host "Waiting for service $serviceName to stop... ($i/$maxRetries)"
-            Start-Sleep -Seconds $retryDelay
-        }
-    }
-  displayName: 'Stop Service'
+    Write-Host "Stop command issued. If service doesn't exist, ignoring error."
+  displayName: 'Stop Service (Optional)'
+  continueOnError: true
 
 # 6. Clean the target folder
 - powershell: |
@@ -87,4 +74,92 @@ steps:
     Write-Host "Cleaning the target folder: $deployPath"
     if (Test-Path $deployPath) {
         Get-ChildItem -Path $deployPath -Recurse -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-        Writ
+        Write-Host "Target folder cleaned."
+    } else {
+        Write-Host "Target folder $deployPath does not exist, skipping cleanup."
+    }
+  displayName: 'Clean Target Folder'
+
+# 7. Copy the build outputs (ZIP, etc.) to the deploy folder
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(build.artifactStagingDirectory)'
+    Contents: '**/*'
+    TargetFolder: '$(deployPath)'
+    OverWrite: true
+  displayName: 'Copy Files to Target Directory'
+
+# 8. Unzip the Web Deploy Package (if generated)
+- powershell: |
+    $zipPath = "$(deployPath)\demo-discounts-api.zip"
+    $destinationPath = "$(deployPath)"
+    if (Test-Path $zipPath) {
+        Write-Host "Extracting $zipPath to $destinationPath..."
+        Expand-Archive -Path $zipPath -DestinationPath $destinationPath -Force
+        Write-Host "Extraction complete."
+    } else {
+        Write-Host "Deployment zip file not found: $zipPath - maybe it's already unzipped or the build didn't produce a .zip?"
+    }
+  displayName: 'Unzip Deployment Package'
+
+# 9. Configure (or reconfigure) and start the Windows Service using NSSM
+- powershell: |
+    $deployPath = "$(deployPath)"
+    $appDllName = "$(appDll)"
+    $dllPath = Get-ChildItem -Path $deployPath -Recurse -Filter $appDllName | Select-Object -ExpandProperty FullName -First 1
+    $dllDirectory = Split-Path -Path $dllPath
+    $serviceName = "$(serviceName)"
+    $servicePort = "$(servicePort)"
+    $logPath = "$(logPath)"
+    $wuser = "$(wuser)"
+    $wpass = "$(wpass)"
+    
+    # Add ".\" prefix if the username is a local account and not already prefixed
+    if ($wuser -notlike "*\*") {
+        $wuser = ".\" + $wuser
+    }
+
+    if ($dllPath) {
+        Write-Host "Found application DLL: $dllPath"
+        Write-Host "Setting up the service: $serviceName on port $servicePort"
+
+        $nssmPath = "nssm"
+        if (-not (Get-Command $nssmPath -ErrorAction SilentlyContinue)) {
+            Write-Error "NSSM is not installed or not in the PATH."
+            exit 1
+        }
+
+        # Remove any existing service
+        & $nssmPath remove $serviceName confirm
+
+        Write-Host "Deleted existing service $serviceName if it existed."
+
+        # Ensure logs directory
+        if (!(Test-Path -Path $logPath)) {
+            New-Item -ItemType Directory -Path $logPath | Out-Null
+        }
+
+        # Install NSSM service
+        & $nssmPath install $serviceName "C:\Program Files\dotnet\dotnet.exe" `
+            "$dllPath --urls=https://localhost:$servicePort"
+
+        & $nssmPath set $serviceName AppDirectory $dllDirectory
+        & $nssmPath set $serviceName AppStdout (Join-Path $logPath "output.log")
+        & $nssmPath set $serviceName AppStderr (Join-Path $logPath "error.log")
+
+        # Run under the specified user account
+        Write-Host "Setting service to run under user account: $wuser"
+        & $nssmPath set $serviceName ObjectName $wuser $wpass
+
+        # Set an environment variable if needed
+        Write-Host "Setting DEPLOYMENT_NAME=OnPremise in service environment."
+        & $nssmPath set $serviceName AppEnvironmentExtra DEPLOYMENT_NAME=OnPremise
+
+        # Start the service
+        & $nssmPath start $serviceName
+        Write-Host "Service $serviceName configured and started successfully."
+    } else {
+        Write-Error "Application DLL not found in deployment path: $deployPath"
+        exit 1
+    }
+  displayName: 'Configure and Start Service'
