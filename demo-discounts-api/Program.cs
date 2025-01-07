@@ -12,7 +12,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowOrigins", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173", "https://demo-discounts-vue.gab16.com")
+            .WithOrigins("http://localhost:5173", "https://demo-discounts-client.gab16.com")
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials(); ;
