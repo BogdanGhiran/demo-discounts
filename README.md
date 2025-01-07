@@ -1,6 +1,8 @@
 # Introduction 
 The project is a .NET API Project with a hub located at /discountHub, it has capabilities for generating codes, generating codes and replying with the code list(for testing purposes) and using codes(one time-only)
 
+The system uses SignalR to communicate between the frontend and backend applications, and EF Core to connect to a PostgreSQL database.
+
 ### Backend available at:
 https://demo-discounts.gab16.com/status
 ### Frontend available at:
