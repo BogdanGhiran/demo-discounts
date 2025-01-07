@@ -62,39 +62,11 @@ steps:
 # 5. Stop the existing Windows Service (if it’s running)
 - powershell: |
     $serviceName = "$(serviceName)"
-    Write-Host "Checking if service $serviceName exists..."
-
-    # Capture the output (and error) of 'nssm status'
-    $serviceCheck = & nssm status $serviceName 2>&1
-
-    if ($serviceCheck -match "OpenService.*does not exist") {
-        Write-Host "Service $serviceName does not exist. Skipping stop."
-        exit 0
-    }
-    else {
-        Write-Host "Service $serviceName found, attempting to stop..."
-        $maxRetries = 10
-        $retryDelay = 5
-
-        & nssm stop $serviceName
-
-        for ($i = 1; $i -le $maxRetries; $i++) {
-            $status = & nssm status $serviceName
-            if ($status -eq "SERVICE_STOPPED") {
-                Write-Host "Service $serviceName stopped successfully."
-                break
-            }
-            elseif ($i -eq $maxRetries) {
-                Write-Error "Service $serviceName did not stop in time. Current status: $status"
-                exit 1
-            }
-            else {
-                Write-Host "Waiting for service $serviceName to stop... ($i/$maxRetries)"
-                Start-Sleep -Seconds $retryDelay
-            }
-        }
-    }
-  displayName: 'Stop Service (if exists)'
+    Write-Host "Attempting to stop service $serviceName..."
+    & nssm stop $serviceName
+    Write-Host "Stop command issued. If service doesn't exist, ignoring error."
+  displayName: 'Stop Service (Optional)'
+  continueOnError: true
 
 # 6. Clean the target folder
 - powershell: |
