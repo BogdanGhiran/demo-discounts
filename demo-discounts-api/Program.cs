@@ -1,4 +1,9 @@
+using demo_discounts_api.Constants;
 using demo_discounts_api.Hubs;
+using demo_discounts_api.Repositories;
+using demo_discounts_api.Repositories.Contracts;
+using demo_discounts_api.Services;
+using demo_discounts_api.Services.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +24,16 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddTransient<IDiscountCodeRepository, DiscountCodeMemoryRepository>();
+builder.Services.AddTransient<IDiscountCodeService, DiscountCodeService>();
+
 var app = builder.Build();
+
+ApplicationLimits.MinCount = builder.Configuration.GetValue<int>("DiscountLimits:MinCount");
+ApplicationLimits.MaxCount = builder.Configuration.GetValue<int>("DiscountLimits:MaxCount");
+ApplicationLimits.MinLength = builder.Configuration.GetValue<int>("DiscountLimits:MinLength");
+ApplicationLimits.MaxLength = builder.Configuration.GetValue<int>("DiscountLimits:MaxLength");
+
 
 app.UseCors("AllowOrigins");
 
