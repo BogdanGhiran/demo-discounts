@@ -6,7 +6,7 @@
 
         public static string GenerateRandomCode(int length)
         {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()";
             return new string(
                 Enumerable.Range(0, length)
                     .Select(_ => chars[Random.Next(chars.Length)])
