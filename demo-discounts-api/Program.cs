@@ -1,3 +1,5 @@
+using demo_discounts_api.Hubs;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,10 +7,21 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSignalR();
 
 builder.Services.AddControllers();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowOrigins", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173", "https://demo-discounts-vue.gab16.com")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials(); ;
+    });
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseCors("AllowOrigins");
 
 app.UseHttpsRedirection();
 
