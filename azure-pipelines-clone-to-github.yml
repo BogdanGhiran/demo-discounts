@@ -1,0 +1,61 @@
+trigger:
+- main
+
+pool:
+  name: Default  # The name of the pool with your self-hosted agent
+
+variables:
+  # Replace this with your variable group name
+  - group: variable-group  
+
+steps:
+### 1) Clone Azure DevOps "demo-discounts" repository
+- script: |
+    echo "Cloning Azure DevOps demo-discounts repository..."
+    git clone https://$(AZURE_DEVOPS_PAT)@$(AZURE_DEVOPS_DEMO_DISCOUNTS_REPO_URL) demo-discounts
+  displayName: 'Clone Azure DevOps FE Repository'
+
+### 2) Check for large files (> 25 MB) in the repo
+- task: PowerShell@2
+  displayName: 'Check for Large Files in FE Repository'
+  inputs:
+    targetType: 'inline'
+    script: |
+      # Navigate into your cloned folder (assuming it's called demo-discounts)
+      cd demo-discounts
+
+      $limit = 25MB  # or 25MB = 25 * 1024 * 1024
+      Write-Host "Checking for files larger than $limit..."
+
+      $largeFiles = Get-ChildItem -Recurse | Where-Object { $_.Length -gt $limit }
+      if ($largeFiles) {
+        Write-Host "Error: The following files exceed 25 MB:"
+        $largeFiles | ForEach-Object {
+          Write-Host $_.FullName "(`$($_.Length) bytes`)"
+        }
+        # Fail the step/pipeline
+        exit 1
+      }
+      else {
+        Write-Host "No files exceed 25 MB. All good!"
+      }
+
+### 3) Commit and Push the repo to GitHub
+- script: |
+    cd demo-discounts
+
+    echo "Configuring Git user information for repository..."
+    git config user.email "$(GITHUB_EMAIL)"
+    git config user.name "Azure DevOps Pipeline"
+
+    echo "Adding GitHub as remote..."
+    git remote add github https://$(GITHUB_TOKEN)@$(GITHUB_DEMO_DISCOUNTS_REPO)
+
+    echo "Fetching and rebasing changes from GitHub (if any exist)..."
+    # If you want to preserve or merge what's already in GitHub:
+    git pull github main --rebase
+
+    echo "Pushing the local Azure DevOps code to GitHub..."
+    # Force-push if you really want to overwrite GitHub with the Azure DevOps repo
+    git push -u github main --force
+  displayName: 'Copy Code to GitHub (demo-discounts)'
