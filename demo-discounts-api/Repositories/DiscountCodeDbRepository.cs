@@ -68,12 +68,10 @@ namespace demo_discounts_api.Repositories
         }
         public async Task<bool> UseCode(string code)
         {
-            // Use a transaction to ensure atomicity
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                // Find the discount code with a row-level lock
                 var discount = await _context.DiscountCodes
                     .FromSqlRaw("SELECT * FROM \"DiscountCodes\" WHERE \"Code\" = {0} FOR UPDATE", code)
                     .FirstOrDefaultAsync();
@@ -89,15 +87,13 @@ namespace demo_discounts_api.Repositories
                     await transaction.RollbackAsync();
                     return false; // Code is already used
                 }
-
-                // Mark the code as used
+                
                 discount.IsUsed = true;
                 discount.DateUsed = DateTime.UtcNow;
 
                 _context.DiscountCodes.Update(discount);
                 await _context.SaveChangesAsync();
-
-                // Commit the transaction
+                
                 await transaction.CommitAsync();
                 return true;
             }
