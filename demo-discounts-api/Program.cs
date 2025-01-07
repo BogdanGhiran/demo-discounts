@@ -26,6 +26,7 @@ if (connString != null)
         });
 
         builder.Services.AddTransient<IDiscountCodeRepository, DiscountCodeDbRepository>();
+        databaseDetected = true;
     }
     catch
     {
