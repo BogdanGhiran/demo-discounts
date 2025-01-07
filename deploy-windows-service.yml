@@ -1,5 +1,5 @@
 trigger:
-- master
+- main
 
 pool:
   name: Default  # The name of the pool with your self-hosted agent
