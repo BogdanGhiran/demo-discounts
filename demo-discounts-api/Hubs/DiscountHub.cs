@@ -1,5 +1,4 @@
-﻿using demo_discounts_api.Repositories.Contracts;
-using demo_discounts_api.Services.Contracts;
+﻿using demo_discounts_api.Services.Contracts;
 using Microsoft.AspNetCore.SignalR;
 
 namespace demo_discounts_api.Hubs;
@@ -22,6 +21,7 @@ public class DiscountHub : Hub
 
     public async Task UseCode(string code)
     {
+        code = code.Trim();
         var response = await _codeService.UseCode(code);
         
         await Clients.Caller.SendAsync("CodeUsed", new { Code = code, Success = response.Success });

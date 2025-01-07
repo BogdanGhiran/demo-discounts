@@ -1,20 +1,15 @@
 # Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+The project is a .NET API Project with a hub located at /discountHub, it has capabilities for generating codes, generating codes and replying with the code list(for testing purposes) and using codes(one time-only)
 
 # Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+
+1.	Installation process - make sure to have .net 8 runtime installed before running the project
+2.	Software dependencies - uses a postgresql database hosted at localhost:5432, called demo-discounts-db with a user=defaultUser and pass=defaultPassword
 
 # Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+Open the project in Visual Studio(2022) and hit run on the https profile. 
+By default, it tries to use the connection string located in appsettings:ConnectionStrings:DemoDiscountsDb
+If that is not available, or the database is inaccessible, an in-memory repository is used for debug purposes. This does not have persistance so it should not be relied upon
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
-
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+# Deployment
+Every time the main branch receives an update(commit) the https://dev.azure.com/demo-org-bg/demo-discounts/_build pipeline will pick up the changes, rebuild and test the service, and if that is successful, it will deploy the new service version at [demo-discounts.gab16.com](https://demo-discounts.gab16.com/status)

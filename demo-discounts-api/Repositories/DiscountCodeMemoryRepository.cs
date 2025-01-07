@@ -1,7 +1,6 @@
 ﻿using demo_discounts_api.Helpers;
 using demo_discounts_api.Models;
 using demo_discounts_api.Repositories.Contracts;
-using demo_discounts_api.Services.Contracts;
 using System.Collections.Concurrent;
 
 namespace demo_discounts_api.Repositories
