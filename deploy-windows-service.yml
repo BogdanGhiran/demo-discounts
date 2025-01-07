@@ -1,0 +1,90 @@
+trigger:
+- master
+
+pool:
+  name: Default  # The name of the pool with your self-hosted agent
+
+variables:
+  # The new variable group that contains wuser and wpass secrets
+  - group: variable-group  
+
+  - name: solution
+    value: '**/*.sln'
+  - name: buildPlatform
+    value: 'Any CPU'
+  - name: buildConfiguration
+    value: 'Release'
+
+  # Change the deploy path for demo-discounts
+  - name: deployPath
+    value: 'C:\Apps\demo-discounts'
+
+  # The DLL name for your startup project
+  - name: appDll
+    value: 'demo-discounts-api.dll'
+
+  # The Windows service name
+  - name: serviceName
+    value: 'demo-discounts'
+
+  # The port you want to run on
+  - name: servicePort
+    value: '1234'
+
+  # Path for logs
+  - name: logPath
+    value: 'C:\AppLogs\demo-discounts'
+
+
+steps:
+# 1. Install NuGet (if not already on the agent)
+- task: NuGetToolInstaller@1
+
+# 2. Restore the .NET solution
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+# 3. Build the solution
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+# 4. (Optional) Run Tests
+- task: VSTest@2
+  inputs:
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+# 5. Stop the existing Windows Service (if it’s running)
+- powershell: |
+    $serviceName = "$(serviceName)"
+    Write-Host "Stopping service: $serviceName if it is running..."
+    $maxRetries = 10
+    $retryDelay = 5
+    & nssm stop $serviceName
+    for ($i = 1; $i -le $maxRetries; $i++) {
+        $status = & nssm status $serviceName
+        if ($status -eq "SERVICE_STOPPED") {
+            Write-Host "Service $serviceName stopped successfully."
+            break
+        } elseif ($i -eq $maxRetries) {
+            Write-Error "Service $serviceName did not stop in time. Current status: $status"
+            exit 1
+        } else {
+            Write-Host "Waiting for service $serviceName to stop... ($i/$maxRetries)"
+            Start-Sleep -Seconds $retryDelay
+        }
+    }
+  displayName: 'Stop Service'
+
+# 6. Clean the target folder
+- powershell: |
+    $deployPath = "$(deployPath)"
+    Write-Host "Cleaning the target folder: $deployPath"
+    if (Test-Path $deployPath) {
+        Get-ChildItem -Path $deployPath -Recurse -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        Writ
